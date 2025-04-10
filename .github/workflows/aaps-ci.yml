@@ -20,7 +20,8 @@ on:
 
 jobs:
   call-upload:
-    uses: Angus-repo/AndroidAPS/.github/workflows/set-secrets-reusable@aaps-ci-gdrive
+    needs: build
+    uses: Angus-repo/AndroidAPS/.github/workflows/set-secrets-reusable.yml@aaps-ci-gdrive
     secrets:
       GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
       GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
