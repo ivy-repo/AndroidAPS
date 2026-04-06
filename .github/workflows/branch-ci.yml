@@ -1,26 +1,8 @@
-name: Pull Request CI(Test)
+name: Branch CI
 
 on:
   workflow_dispatch:
     inputs:
-      repo:
-        description: 'Target repository (format: owner/repo)'
-        required: true
-        default: 'nightscout/AndroidAPS'
-
-      pr_number:
-        description: 'PR number to checkout (e.g. 123)'
-        required: true
-
-      pr_ref_type:
-        description: 'Select PR reference type to checkout'
-        required: true
-        default: 'head'
-        type: choice
-        options:
-          - head
-          - merge
-
       buildVariant:
         description: 'Select Build Variant'
         required: true
@@ -166,35 +148,12 @@ jobs:
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
           echo "✅ Access token obtained."
 
-      - name: Determine PR reference
-        id: pr_ref
-        run: |
-          PR_NUMBER=${{ github.event.inputs.pr_number }}
-          PR_REF_TYPE=${{ github.event.inputs.pr_ref_type }}
-
-          full_ref="refs/pull/${{ github.event.inputs.pr_number }}/$PR_REF_TYPE"
-
-          echo "Resolved PR ref: $full_ref"
-          echo "ref_name=$full_ref" >> $GITHUB_OUTPUT
-          
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_REF_TYPE=$PR_REF_TYPE" >> $GITHUB_ENV
-
-      - name: Checkout pull/${{ github.event.inputs.pr_number }}/${{ github.event.inputs.pr_ref_type }}
+      - name: Checkout source code
         uses: actions/checkout@v5
-        with:
-          repository: ${{ github.event.inputs.repo }}
-          ref: ${{ steps.pr_ref.outputs.ref_name }}
-          fetch-depth: 1
 
       - name: Load shared versions
         run: |
-          if [ -f .github/jdk-map.json ]; then
-            JAVA_VERSION=$(jq -r '.default' .github/jdk-map.json)
-          else
-            JAVA_VERSION=21
-            echo "⚠️ jdk-map.json not found in PR repo, using default JDK $JAVA_VERSION"
-          fi
+          JAVA_VERSION=$(jq -r '.default' .github/jdk-map.json)
           echo "JAVA_VERSION=$JAVA_VERSION" >> $GITHUB_ENV
 
       - name: Set BUILD_VARIANT
@@ -234,17 +193,17 @@ jobs:
 
       - name: Build APKs
         run: |
-          ./gradlew :app:assemble${{ env.BUILD_VARIANT }} :wear:assemble${{ env.BUILD_VARIANT }} \
-            -Dorg.gradle.jvmargs="-Xmx8g -XX:+UseParallelGC -Xss1024m" \
-            -Dkotlin.daemon.jvm.options="-Xmx2g" \
-            -Dkotlin.compiler.execution.strategy="in-process" \
-            -Dorg.gradle.daemon=true \
-            -Dorg.gradle.workers.max=8 \
-            -Dorg.gradle.caching=true \
-            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/keystore/keystore.jks" \
-            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
-            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+              ./gradlew :app:assemble${{ env.BUILD_VARIANT }} :wear:assemble${{ env.BUILD_VARIANT }} \
+              -Dorg.gradle.jvmargs="-Xmx8g -XX:+UseParallelGC -Xss1024m" \
+              -Dkotlin.daemon.jvm.options="-Xmx2g" \
+              -Dkotlin.compiler.execution.strategy="in-process" \
+              -Dorg.gradle.daemon=true \
+              -Dorg.gradle.workers.max=8 \
+              -Dorg.gradle.caching=true \
+              -Pandroid.injected.signing.store.file="$RUNNER_TEMP/keystore/keystore.jks" \
+              -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
       - name: Rename APKs with version
         run: |
@@ -331,7 +290,7 @@ jobs:
             echo "✅ Uploaded: $NAME"
           }
 
-          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}_pull-${PR_NUMBER}-${PR_REF_TYPE}.apk"
-          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}_pull-${PR_NUMBER}-${PR_REF_TYPE}.apk"
+          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
 
           echo "🎉 APKs successfully uploaded to Google Drive!"
